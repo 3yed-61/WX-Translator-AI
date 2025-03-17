@@ -1,3 +1,7 @@
+
+/* ========================================
+   Text Selection Translation (Context Menu)
+   ======================================== */
 // Function to add context menu
 let isMouseDown = false;
 let selectionTimer = null;
@@ -296,156 +300,170 @@ async function translateText(text) {
     }
 }
 
+/* ========================================
+   Tweet Translation (for Twitter)
+   ======================================== */
 async function performTranslation(tweet, textContent, lang, button) {
-    button.disabled = true;
-    button.textContent = 'در حال ترجمه...';
+  // Show a loading state
+  button.textContent = 'در حال ترجمه...';
+  button.disabled = true;
 
-    try {
-        const translation = await translateText(textContent);
-        if (translation) {
-            const translationBox = document.createElement('div');
-            translationBox.style.marginTop = '10px';
-            translationBox.style.padding = '10px';
-            
-            const isDarkMode = document.documentElement.style.colorScheme === 'dark' ||
-                               window.matchMedia('(prefers-color-scheme: dark)').matches ||
-                               document.body.classList.contains('dark') ||
-                               getComputedStyle(document.body).backgroundColor.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)/)?.[1] < 50;
-            
-            translationBox.style.backgroundColor = '#749e00';
-            translationBox.style.color = isDarkMode ? '#e7e9ea' : '#0f1419';
-            translationBox.style.border = 'none';
-            
-            translationBox.style.borderRadius = '12px';
-            translationBox.style.textAlign = 'right';
-            translationBox.style.direction = 'rtl';
-            translationBox.style.fontSize = '15px';
-            translationBox.style.lineHeight = '1.5';
-            translationBox.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
-            translationBox.style.width = '100%';
-            translationBox.style.boxSizing = 'border-box';
-            
-            const translationText = document.createElement('pre');
-            translationText.textContent = translation;
-            translationText.style.whiteSpace = 'pre-wrap';
-            translationText.style.wordBreak = 'break-word';
-            translationText.style.margin = '0';
-            translationBox.appendChild(translationText);
-            
-            const retranslateButton = document.createElement('button');
-            retranslateButton.textContent = 'بازترجمه';
-            retranslateButton.style.marginTop = '10px';
-            retranslateButton.style.padding = '5px 10px';
-            retranslateButton.style.backgroundColor = '#1d9bf0';
-            retranslateButton.style.color = 'white';
-            retranslateButton.style.border = 'none';
-            retranslateButton.style.borderRadius = '5px';
-            retranslateButton.style.cursor = 'pointer';
-            retranslateButton.style.fontSize = '13px';
-            
-            retranslateButton.addEventListener('click', async () => {
-                retranslateButton.disabled = true;
-                retranslateButton.textContent = 'در حال ترجمه...';
-                
-                try {
-                    translationCache.delete(textContent);
-                    const newTranslation = await translateText(textContent);
-                    if (newTranslation) {
-                        translationText.textContent = newTranslation;
-                    }
-                } catch (error) {
-                    console.error('Error during retranslation:', error);
-                    alert('خطا در بازترجمه.');
-                } finally {
-                    retranslateButton.disabled = false;
-                    retranslateButton.textContent = 'بازترجمه';
-                }
-            });
-            
-            translationBox.appendChild(retranslateButton);
-            tweet.insertAdjacentElement('afterend', translationBox);
-            
-            button.remove();
-        } else {
-            alert('خطا در ترجمه.');
-        }
-    } catch (error) {
-        console.error('خطا در ترجمه:', error);
-        alert('خطا در ترجمه.');
-    } finally {
-        button.disabled = false;
-        button.textContent = 'ترجمه توییت';
-    }
-}
+  // Prepare text
+  const cleanedText = textContent.replace(/\s+/g, ' ').trim();
 
-function isTwitterSite() {
-    return window.location.hostname === 'twitter.com' || window.location.hostname === 'x.com';
-}
+  // Fetch translation
+  let translation = await translateText(cleanedText, lang);
+  if (!translation) {
+    console.log('Retrying translation...');
+    translation = await translateText(cleanedText, lang);
+  }
 
-async function addTranslateButtons() {
-    if (!isTwitterSite()) {
-        return;
-    }
+  if (translation) {
+    // Remove the original button
+    button.remove();
 
-    const tweets = document.querySelectorAll('article div[dir="auto"]:not([lang="fa"])');
-
-    for (const tweet of tweets) {
-        if (tweet.dataset.buttonAdded) continue;
-        tweet.dataset.buttonAdded = true;
-
-        tweet.style.position = 'relative';
-
-        const button = document.createElement('button');
-        button.textContent = 'ترجمه';
-        button.style.position = 'absolute';
-        button.style.top = '5px';
-        button.style.right = '5px';
-        button.style.padding = '2px 4px';
-        button.style.fontSize = '10px';
-        button.style.backgroundColor = '#749e00';
-        button.style.color = 'white';
-        button.style.border = 'none';
-        button.style.borderRadius = '3px';
-        button.style.cursor = 'pointer';
-        button.style.display = 'none'; 
-
-        tweet.addEventListener('mouseenter', () => {
-            button.style.display = 'block';
-        });
-        tweet.addEventListener('mouseleave', () => {
-            button.style.display = 'none';
-        });
-
-        button.addEventListener('click', async (event) => {
-            event.stopPropagation();
-            const textContent = tweet.textContent.trim();
-            const lang = tweet.getAttribute('lang');
-            await performTranslation(tweet, textContent, lang, button);
-        });
-
-        tweet.appendChild(button);
-    }
-}
-
-if (isTwitterSite()) {
-    const observer = new MutationObserver(debounce((mutations) => {
-        addTranslateButtons();
-    }, 250));
-
-    observer.observe(document.body, {
-        childList: true,
-        subtree: true
+    // Create a wrapper that will hold both the header (floating above the content) and the translation content
+    const translationWrapper = document.createElement('div');
+    Object.assign(translationWrapper.style, {
+      position: 'relative',
+      marginTop: '10px',
+      border: '2px solid #69b611',  // Dark green border around entire box
+      borderRadius: '8px',
+      backgroundColor: '#daffa3',   // Light green background
+      color: '#145b01',             // Dark green text
+      fontFamily: 'Tahoma, sans-serif',
+      fontSize: '16px',
+      lineHeight: '1.5',
+      width: '100%',
+      boxSizing: 'border-box',
+      paddingTop: '24px'            // Extra space at the top for the header
     });
+
+    // Create header that appears above the content in the top-right corner
+    const headerLabel = document.createElement('div');
+    Object.assign(headerLabel.style, {
+      position: 'absolute',
+      top: '0',
+      right: '10px',
+      backgroundColor: '#daffa3',  // Same as container
+      padding: '0 8px',
+      fontWeight: 'bold',
+      display: 'flex',
+      alignItems: 'center'
+    });
+    const labelText = document.createElement('span');
+    labelText.textContent = 'ترجمه';
+    const refreshIcon = document.createElement('span');
+    refreshIcon.innerHTML = '&#x21bb;';
+    Object.assign(refreshIcon.style, {
+      cursor: 'pointer',
+      fontSize: '18px',
+      marginLeft: '8px'
+    });
+    headerLabel.appendChild(labelText);
+    headerLabel.appendChild(refreshIcon);
+
+    // Create content area for the translated text
+    const contentBox = document.createElement('div');
+    Object.assign(contentBox.style, {
+      padding: '12px',
+      direction: 'rtl',
+      textAlign: 'right'
+    });
+    const translatedDiv = document.createElement('div');
+    translatedDiv.className = 'translated-text';
+    translatedDiv.textContent = translation;
+    Object.assign(translatedDiv.style, {
+      whiteSpace: 'pre-wrap',
+      wordBreak: 'break-word',
+      margin: '0'
+    });
+    contentBox.appendChild(translatedDiv);
+
+    // Assemble the wrapper: header on top, then content below
+    translationWrapper.appendChild(headerLabel);
+    translationWrapper.appendChild(contentBox);
+
+    // Insert the translation wrapper after the tweet
+    tweet.insertAdjacentElement('afterend', translationWrapper);
+
+    // Add refresh functionality to the icon
+    refreshIcon.addEventListener('click', async (event) => {
+      event.stopPropagation();
+      translatedDiv.textContent = '...در حال ترجمه مجدد';
+      translationCache.delete(cleanedText);
+      const newTranslation = await translateText(cleanedText, lang);
+      translatedDiv.textContent = newTranslation
+        ? newTranslation
+        : 'خطا در بازترجمه. لطفاً دوباره تلاش کنید.';
+    });
+  } else {
+    alert('خطا در ترجمه.');
+    button.textContent = 'ترجمه توییت';
+    button.disabled = false;
+  }
 }
 
+// Determine if the current site is Twitter (or X)
+function isTwitterSite() {
+  return window.location.hostname === 'twitter.com' || window.location.hostname === 'x.com';
+}
+
+// Add translation buttons to tweets on Twitter
+async function addTranslateButtons() {
+  if (!isTwitterSite()) return;
+
+  // Select tweets that are not in Persian
+  const tweets = document.querySelectorAll('article div[dir="auto"]:not([lang="fa"])');
+  for (const tweet of tweets) {
+    if (tweet.dataset.buttonAdded) continue;
+    tweet.dataset.buttonAdded = true;
+    tweet.style.position = 'relative';
+    const button = document.createElement('button');
+    button.textContent = 'ترجمه';
+    Object.assign(button.style, {
+      position: 'absolute',
+      top: '5px',
+      right: '5px',
+      padding: '2px 4px',
+      fontSize: '10px',
+      backgroundColor: '#749e00',
+      color: 'white',
+      border: 'none',
+      borderRadius: '3px',
+      cursor: 'pointer',
+      display: 'none'
+    });
+    tweet.addEventListener('mouseenter', () => {
+      button.style.display = 'block';
+    });
+    tweet.addEventListener('mouseleave', () => {
+      button.style.display = 'none';
+    });
+    button.addEventListener('click', async (event) => {
+      event.stopPropagation();
+      const textContent = tweet.textContent.trim();
+      const lang = tweet.getAttribute('lang');
+      await performTranslation(tweet, textContent, lang, button);
+    });
+    tweet.appendChild(button);
+  }
+}
+
+// Use MutationObserver to catch dynamically loaded tweets and add buttons
+if (isTwitterSite()) {
+  const observer = new MutationObserver(debounce(() => addTranslateButtons(), 250));
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
+}
+
+// Debounce helper function to limit the rate of function calls
 function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
+  let timeout;
+  return function executedFunction(...args) {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  };
 }
